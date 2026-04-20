@@ -1,0 +1,378 @@
+CREATE DATABASE nike_adidas_project;
+\c nike_adidas_project;
+
+CREATE TABLE factories (
+    factory_id SERIAL PRIMARY KEY,
+    brand VARCHAR(20),
+    factory_code VARCHAR(20),
+    country VARCHAR(30),
+    city VARCHAR(50),
+    year INT,
+    workers INT,
+    monthly_output INT,
+    production_cost DECIMAL(10,2),
+    latitude FLOAT,
+    longitude FLOAT
+);
+
+WITH RECURSIVE numbers AS (
+    SELECT generate_series(1, 200) AS n
+),
+countries AS (
+    SELECT * FROM (VALUES
+        ('Vietnam', 40, 16.0, 108.0, 'Ho Chi Minh', 10.8231, 106.6297),
+        ('Vietnam', 40, 16.0, 108.0, 'Hanoi', 21.0285, 105.8542),
+        ('Vietnam', 40, 16.0, 108.0, 'Da Nang', 16.0544, 108.2022),
+        ('Indonesia', 25, -0.8, 113.9, 'Jakarta', -6.2088, 106.8456),
+        ('Indonesia', 25, -0.8, 113.9, 'Surabaya', -7.2575, 112.7521),
+        ('Indonesia', 25, -0.8, 113.9, 'Bandung', -6.9175, 107.6191),
+        ('China', 15, 35.9, 104.2, 'Shanghai', 31.2304, 121.4737),
+        ('China', 15, 35.9, 104.2, 'Guangzhou', 23.1291, 113.2644),
+        ('China', 15, 35.9, 104.2, 'Suzhou', 31.2990, 120.5853),
+        ('Thailand', 8, 15.9, 101.0, 'Bangkok', 13.7367, 100.5231),
+        ('Thailand', 8, 15.9, 101.0, 'Chonburi', 13.3611, 100.9847),
+        ('USA', 5, 39.8, -98.5, 'Portland', 45.5152, -122.6784),
+        ('USA', 5, 39.8, -98.5, 'Memphis', 35.1495, -90.0490),
+        ('Germany', 4, 51.2, 10.5, 'Berlin', 52.5200, 13.4050),
+        ('Germany', 4, 51.2, 10.5, 'Munich', 48.1351, 11.5820),
+        ('Italy', 3, 41.9, 12.5, 'Milan', 45.4642, 9.1900)
+    ) AS c(country_name, pct, lat, lng, city_name, city_lat, city_lng)
+),
+brands AS (
+    SELECT 'Nike' AS brand_name UNION SELECT 'Adidas'
+)
+INSERT INTO factories (brand, factory_code, country, city, year, workers, monthly_output, production_cost, latitude, longitude)
+SELECT 
+    b.brand_name AS brand,
+    UPPER(CONCAT(LEFT(b.brand_name, 2), '-', LEFT(c.country_name, 2), '-', LPAD(n.n::TEXT, 3, '0'))) AS factory_code,
+    c.country_name AS country,
+    c.city_name AS city,
+    2023 + (n.n % 2) AS year,
+    CASE 
+        WHEN c.country_name = 'Vietnam' THEN 25000 + (n.n % 15000)
+        WHEN c.country_name = 'Indonesia' THEN 22000 + (n.n % 14000)
+        WHEN c.country_name = 'China' THEN 18000 + (n.n % 12000)
+        WHEN c.country_name = 'Thailand' THEN 12000 + (n.n % 10000)
+        WHEN c.country_name = 'USA' THEN 3000 + (n.n % 4000)
+        ELSE 2000 + (n.n % 5000)
+    END AS workers,
+    (CASE 
+        WHEN c.country_name = 'Vietnam' THEN 25000 + (n.n % 15000)
+        WHEN c.country_name = 'Indonesia' THEN 22000 + (n.n % 14000)
+        WHEN c.country_name = 'China' THEN 18000 + (n.n % 12000)
+        WHEN c.country_name = 'Thailand' THEN 12000 + (n.n % 10000)
+        WHEN c.country_name = 'USA' THEN 3000 + (n.n % 4000)
+        ELSE 2000 + (n.n % 5000)
+    END) * (60 + (n.n % 31)) AS monthly_output,
+    ROUND(((CASE 
+        WHEN c.country_name = 'Vietnam' THEN 25000 + (n.n % 15000)
+        WHEN c.country_name = 'Indonesia' THEN 22000 + (n.n % 14000)
+        WHEN c.country_name = 'China' THEN 18000 + (n.n % 12000)
+        WHEN c.country_name = 'Thailand' THEN 12000 + (n.n % 10000)
+        WHEN c.country_name = 'USA' THEN 3000 + (n.n % 4000)
+        ELSE 2000 + (n.n % 5000)
+    END) * (60 + (n.n % 31)) / 100000.0) + 
+    CASE 
+        WHEN c.country_name = 'Vietnam' THEN 15 + (n.n % 10)
+        WHEN c.country_name = 'Indonesia' THEN 13 + (n.n % 10)
+        WHEN c.country_name = 'China' THEN 20 + (n.n % 12)
+        WHEN c.country_name = 'Thailand' THEN 12 + (n.n % 8)
+        WHEN c.country_name = 'USA' THEN 35 + (n.n % 15)
+        ELSE 25 + (n.n % 15)
+    END, 1) AS production_cost,
+    c.city_lat AS latitude,
+    c.city_lng AS longitude
+FROM numbers n
+CROSS JOIN brands b
+CROSS JOIN LATERAL (
+    SELECT * FROM countries 
+    WHERE n.n % 100 <= pct OR pct = 40
+    LIMIT 1
+) c
+WHERE n.n <= 200;
+
+SELECT COUNT(*) FROM factories;
+SELECT brand, COUNT(*) FROM factories GROUP BY brand;
+SELECT * FROM factories LIMIT 10;
+
+COPY factories TO '/tmp/nike_adidas_data.csv' DELIMITER ',' CSV HEADER;
+
+UPDATE factories SET
+    latitude = CASE 
+        WHEN city = 'Ho Chi Minh' THEN 10.8231
+        WHEN city = 'Hanoi' THEN 21.0285
+        WHEN city = 'Da Nang' THEN 16.0544
+        WHEN city = 'Jakarta' THEN -6.2088
+        WHEN city = 'Surabaya' THEN -7.2575
+        WHEN city = 'Bandung' THEN -6.9175
+        WHEN city = 'Shanghai' THEN 31.2304
+        WHEN city = 'Guangzhou' THEN 23.1291
+        WHEN city = 'Suzhou' THEN 31.2990
+        WHEN city = 'Bangkok' THEN 13.7367
+        WHEN city = 'Chonburi' THEN 13.3611
+        ELSE 16.0
+    END,
+    longitude = CASE 
+        WHEN city = 'Ho Chi Minh' THEN 106.6297
+        WHEN city = 'Hanoi' THEN 105.8542
+        WHEN city = 'Da Nang' THEN 108.2022
+        WHEN city = 'Jakarta' THEN 106.8456
+        WHEN city = 'Surabaya' THEN 112.7521
+        WHEN city = 'Bandung' THEN 107.6191
+        WHEN city = 'Shanghai' THEN 121.4737
+        WHEN city = 'Guangzhou' THEN 113.2644
+        WHEN city = 'Suzhou' THEN 120.5853
+        WHEN city = 'Bangkok' THEN 100.5231
+        WHEN city = 'Chonburi' THEN 100.9847
+        ELSE 108.0
+    END;
+
+SELECT DISTINCT city, latitude, longitude FROM factories ORDER BY city;
+
+COPY factories TO '/tmp/nike_adidas_fixed.csv' DELIMITER ',' CSV HEADER;
+
+DROP TABLE IF EXISTS factories;
+
+CREATE TABLE factories (
+    factory_id SERIAL PRIMARY KEY,
+    brand VARCHAR(20),
+    factory_code VARCHAR(20),
+    country VARCHAR(30),
+    city VARCHAR(50),
+    year INT,
+    workers INT,
+    monthly_output INT,
+    production_cost DECIMAL(10,2),
+    latitude FLOAT,
+    longitude FLOAT
+);
+
+INSERT INTO factories (brand, factory_code, country, city, year, workers, monthly_output, production_cost, latitude, longitude) VALUES
+('Nike', 'NK-VN-01', 'Vietnam', 'Ho Chi Minh', 2023, 35000, 2500000, 45.5, 10.8231, 106.6297),
+('Nike', 'NK-VN-02', 'Vietnam', 'Hanoi', 2023, 28000, 2200000, 41.2, 21.0285, 105.8542),
+('Nike', 'NK-VN-03', 'Vietnam', 'Da Nang', 2024, 29000, 2400000, 43.5, 16.0544, 108.2022),
+('Nike', 'NK-ID-01', 'Indonesia', 'Jakarta', 2023, 31000, 2400000, 41.0, -6.2088, 106.8456),
+('Nike', 'NK-ID-02', 'Indonesia', 'Surabaya', 2024, 33000, 2600000, 43.5, -7.2575, 112.7521),
+('Nike', 'NK-CN-01', 'China', 'Shanghai', 2023, 30000, 2200000, 52.0, 31.2304, 121.4737),
+('Nike', 'NK-CN-02', 'China', 'Guangzhou', 2024, 27000, 2000000, 49.5, 23.1291, 113.2644),
+('Nike', 'NK-TH-01', 'Thailand', 'Bangkok', 2023, 18000, 1500000, 32.0, 13.7367, 100.5231),
+('Adidas', 'AD-VN-01', 'Vietnam', 'Ho Chi Minh', 2023, 32000, 2300000, 44.0, 10.8231, 106.6297),
+('Adidas', 'AD-VN-02', 'Vietnam', 'Hanoi', 2024, 34000, 2550000, 46.8, 21.0285, 105.8542),
+('Adidas', 'AD-ID-01', 'Indonesia', 'Jakarta', 2023, 33000, 2600000, 43.5, -6.2088, 106.8456),
+('Adidas', 'AD-ID-02', 'Indonesia', 'Bandung', 2024, 35000, 2800000, 45.0, -6.9175, 107.6191),
+('Adidas', 'AD-CN-01', 'China', 'Shanghai', 2023, 22000, 1600000, 48.0, 31.2304, 121.4737),
+('Adidas', 'AD-CN-02', 'China', 'Suzhou', 2024, 19000, 1400000, 45.0, 31.2990, 120.5853),
+('Adidas', 'AD-DE-01', 'Germany', 'Berlin', 2023, 5000, 500000, 55.0, 52.5200, 13.4050);
+
+SELECT DISTINCT city, latitude, longitude FROM factories ORDER BY city;
+
+COPY factories TO '/tmp/nike_adidas_correct.csv' DELIMITER ',' CSV HEADER;
+
+DROP TABLE IF EXISTS factories;
+
+CREATE TABLE factories (
+    factory_id SERIAL PRIMARY KEY,
+    brand VARCHAR(20),
+    factory_code VARCHAR(20),
+    country VARCHAR(30),
+    city VARCHAR(50),
+    year INT,
+    workers INT,
+    monthly_output INT,
+    production_cost DECIMAL(10,2),
+    latitude FLOAT,
+    longitude FLOAT
+);
+
+INSERT INTO factories (brand, factory_code, country, city, year, workers, monthly_output, production_cost, latitude, longitude)
+SELECT 
+    brand,
+    CONCAT(brand, '-', country_code, '-', LPAD(seq::TEXT, 3, '0')) AS factory_code,
+    country,
+    city,
+    year,
+    workers,
+    workers * (60 + (seq % 40)) AS monthly_output,
+    ROUND((workers * (60 + (seq % 40)) / 100000.0) + cost_base + (seq % 15), 1) AS production_cost,
+    lat,
+    lng
+FROM (
+    VALUES
+        ('Nike', 'VN', 'Vietnam', 'Ho Chi Minh', 2023, 35000, 15, 10.8231, 106.6297),
+        ('Nike', 'VN', 'Vietnam', 'Ho Chi Minh', 2024, 37000, 15, 10.8231, 106.6297),
+        ('Nike', 'VN', 'Vietnam', 'Hanoi', 2023, 28000, 13, 21.0285, 105.8542),
+        ('Nike', 'VN', 'Vietnam', 'Hanoi', 2024, 29000, 13, 21.0285, 105.8542),
+        ('Nike', 'VN', 'Vietnam', 'Da Nang', 2023, 22000, 12, 16.0544, 108.2022),
+        ('Nike', 'VN', 'Vietnam', 'Da Nang', 2024, 24000, 12, 16.0544, 108.2022),
+        ('Nike', 'VN', 'Vietnam', 'Can Tho', 2023, 18000, 11, 10.0452, 105.7469),
+        ('Nike', 'VN', 'Vietnam', 'Can Tho', 2024, 20000, 11, 10.0452, 105.7469),
+        ('Nike', 'ID', 'Indonesia', 'Jakarta', 2023, 31000, 14, -6.2088, 106.8456),
+        ('Nike', 'ID', 'Indonesia', 'Jakarta', 2024, 33000, 14, -6.2088, 106.8456),
+        ('Nike', 'ID', 'Indonesia', 'Surabaya', 2023, 25000, 12, -7.2575, 112.7521),
+        ('Nike', 'ID', 'Indonesia', 'Surabaya', 2024, 27000, 12, -7.2575, 112.7521),
+        ('Nike', 'ID', 'Indonesia', 'Bandung', 2023, 22000, 11, -6.9175, 107.6191),
+        ('Nike', 'ID', 'Indonesia', 'Bandung', 2024, 24000, 11, -6.9175, 107.6191),
+        ('Nike', 'CN', 'China', 'Shanghai', 2023, 30000, 18, 31.2304, 121.4737),
+        ('Nike', 'CN', 'China', 'Shanghai', 2024, 27000, 18, 31.2304, 121.4737),
+        ('Nike', 'CN', 'China', 'Guangzhou', 2023, 25000, 16, 23.1291, 113.2644),
+        ('Nike', 'CN', 'China', 'Guangzhou', 2024, 22000, 16, 23.1291, 113.2644),
+        ('Nike', 'TH', 'Thailand', 'Bangkok', 2023, 18000, 10, 13.7367, 100.5231),
+        ('Nike', 'TH', 'Thailand', 'Bangkok', 2024, 19000, 10, 13.7367, 100.5231),
+        ('Nike', 'US', 'USA', 'Portland', 2023, 5000, 30, 45.5152, -122.6784),
+        ('Nike', 'US', 'USA', 'Portland', 2024, 5200, 30, 45.5152, -122.6784),
+        ('Adidas', 'VN', 'Vietnam', 'Ho Chi Minh', 2023, 32000, 15, 10.8231, 106.6297),
+        ('Adidas', 'VN', 'Vietnam', 'Ho Chi Minh', 2024, 34000, 15, 10.8231, 106.6297),
+        ('Adidas', 'VN', 'Vietnam', 'Hanoi', 2023, 26000, 13, 21.0285, 105.8542),
+        ('Adidas', 'VN', 'Vietnam', 'Hanoi', 2024, 28000, 13, 21.0285, 105.8542),
+        ('Adidas', 'VN', 'Vietnam', 'Da Nang', 2023, 20000, 12, 16.0544, 108.2022),
+        ('Adidas', 'VN', 'Vietnam', 'Da Nang', 2024, 22000, 12, 16.0544, 108.2022),
+        ('Adidas', 'ID', 'Indonesia', 'Jakarta', 2023, 33000, 14, -6.2088, 106.8456),
+        ('Adidas', 'ID', 'Indonesia', 'Jakarta', 2024, 35000, 14, -6.2088, 106.8456),
+        ('Adidas', 'ID', 'Indonesia', 'Surabaya', 2023, 27000, 12, -7.2575, 112.7521),
+        ('Adidas', 'ID', 'Indonesia', 'Surabaya', 2024, 29000, 12, -7.2575, 112.7521),
+        ('Adidas', 'CN', 'China', 'Shanghai', 2023, 22000, 18, 31.2304, 121.4737),
+        ('Adidas', 'CN', 'China', 'Shanghai', 2024, 19000, 18, 31.2304, 121.4737),
+        ('Adidas', 'CN', 'China', 'Suzhou', 2023, 20000, 16, 31.2990, 120.5853),
+        ('Adidas', 'CN', 'China', 'Suzhou', 2024, 18000, 16, 31.2990, 120.5853),
+        ('Adidas', 'DE', 'Germany', 'Berlin', 2023, 5000, 35, 52.5200, 13.4050),
+        ('Adidas', 'DE', 'Germany', 'Berlin', 2024, 5200, 35, 52.5200, 13.4050),
+        ('Adidas', 'DE', 'Germany', 'Munich', 2023, 4500, 33, 48.1351, 11.5820),
+        ('Adidas', 'DE', 'Germany', 'Munich', 2024, 4700, 33, 48.1351, 11.5820)
+    ) AS base(brand, country_code, country, city, year, workers, cost_base, lat, lng),
+    generate_series(1, 5) AS seq
+WHERE (brand = 'Nike' AND country IN ('Vietnam', 'Indonesia', 'China', 'Thailand', 'USA'))
+   OR (brand = 'Adidas' AND country IN ('Vietnam', 'Indonesia', 'China', 'Germany'));
+
+SELECT COUNT(*) FROM factories;
+
+COPY factories TO '/tmp/nike_adidas_full.csv' DELIMITER ',' CSV HEADER;
+
+SELECT city, COUNT(*) FROM factories WHERE brand = 'Nike' GROUP BY city ORDER BY city;
+
+TRUNCATE TABLE factories;
+
+INSERT INTO factories (brand, factory_code, country, city, year, workers, monthly_output, production_cost, latitude, longitude)
+SELECT 
+    brand,
+    CONCAT(brand, '-', city_code, '-', LPAD(seq::TEXT, 3, '0')) AS factory_code,
+    country,
+    city,
+    year,
+    workers,
+    workers * (60 + (seq % 50)) AS monthly_output,
+    ROUND((workers * (60 + (seq % 50)) / 100000.0) + cost_base + (seq % 20), 1) AS production_cost,
+    lat + (seq * 0.0003) AS latitude,
+    lng + (seq * 0.0003) AS longitude
+FROM (
+    VALUES
+        ('Nike', 'VN', 'Vietnam', 'Ho Chi Minh', 2023, 35000, 15, 10.8231, 106.6297),
+        ('Nike', 'VN', 'Vietnam', 'Ho Chi Minh', 2024, 37000, 15, 10.8231, 106.6297),
+        ('Nike', 'VN', 'Vietnam', 'Hanoi', 2023, 28000, 13, 21.0285, 105.8542),
+        ('Nike', 'VN', 'Vietnam', 'Hanoi', 2024, 29000, 13, 21.0285, 105.8542),
+        ('Nike', 'VN', 'Vietnam', 'Da Nang', 2023, 22000, 12, 16.0544, 108.2022),
+        ('Nike', 'VN', 'Vietnam', 'Da Nang', 2024, 24000, 12, 16.0544, 108.2022),
+        ('Nike', 'VN', 'Vietnam', 'Can Tho', 2023, 18000, 11, 10.0452, 105.7469),
+        ('Nike', 'VN', 'Vietnam', 'Can Tho', 2024, 20000, 11, 10.0452, 105.7469),
+        ('Nike', 'VN', 'Vietnam', 'Hai Phong', 2023, 20000, 12, 20.8449, 106.6881),
+        ('Nike', 'VN', 'Vietnam', 'Hai Phong', 2024, 21000, 12, 20.8449, 106.6881),
+        ('Nike', 'ID', 'Indonesia', 'Jakarta', 2023, 31000, 14, -6.2088, 106.8456),
+        ('Nike', 'ID', 'Indonesia', 'Jakarta', 2024, 33000, 14, -6.2088, 106.8456),
+        ('Nike', 'ID', 'Indonesia', 'Surabaya', 2023, 25000, 12, -7.2575, 112.7521),
+        ('Nike', 'ID', 'Indonesia', 'Surabaya', 2024, 27000, 12, -7.2575, 112.7521),
+        ('Nike', 'ID', 'Indonesia', 'Bandung', 2023, 22000, 11, -6.9175, 107.6191),
+        ('Nike', 'ID', 'Indonesia', 'Bandung', 2024, 24000, 11, -6.9175, 107.6191),
+        ('Nike', 'CN', 'China', 'Shanghai', 2023, 30000, 18, 31.2304, 121.4737),
+        ('Nike', 'CN', 'China', 'Shanghai', 2024, 27000, 18, 31.2304, 121.4737),
+        ('Nike', 'CN', 'China', 'Guangzhou', 2023, 25000, 16, 23.1291, 113.2644),
+        ('Nike', 'CN', 'China', 'Guangzhou', 2024, 22000, 16, 23.1291, 113.2644),
+        ('Nike', 'CN', 'China', 'Suzhou', 2023, 23000, 15, 31.2990, 120.5853),
+        ('Nike', 'CN', 'China', 'Suzhou', 2024, 20000, 15, 31.2990, 120.5853),
+        ('Nike', 'TH', 'Thailand', 'Bangkok', 2023, 18000, 10, 13.7367, 100.5231),
+        ('Nike', 'TH', 'Thailand', 'Bangkok', 2024, 19000, 10, 13.7367, 100.5231),
+        ('Nike', 'US', 'USA', 'Portland', 2023, 5000, 30, 45.5152, -122.6784),
+        ('Nike', 'US', 'USA', 'Portland', 2024, 5200, 30, 45.5152, -122.6784),
+        ('Adidas', 'VN', 'Vietnam', 'Ho Chi Minh', 2023, 32000, 15, 10.8231, 106.6297),
+        ('Adidas', 'VN', 'Vietnam', 'Ho Chi Minh', 2024, 34000, 15, 10.8231, 106.6297),
+        ('Adidas', 'VN', 'Vietnam', 'Hanoi', 2023, 26000, 13, 21.0285, 105.8542),
+        ('Adidas', 'VN', 'Vietnam', 'Hanoi', 2024, 28000, 13, 21.0285, 105.8542),
+        ('Adidas', 'VN', 'Vietnam', 'Da Nang', 2023, 20000, 12, 16.0544, 108.2022),
+        ('Adidas', 'VN', 'Vietnam', 'Da Nang', 2024, 22000, 12, 16.0544, 108.2022),
+        ('Adidas', 'ID', 'Indonesia', 'Jakarta', 2023, 33000, 14, -6.2088, 106.8456),
+        ('Adidas', 'ID', 'Indonesia', 'Jakarta', 2024, 35000, 14, -6.2088, 106.8456),
+        ('Adidas', 'ID', 'Indonesia', 'Surabaya', 2023, 27000, 12, -7.2575, 112.7521),
+        ('Adidas', 'ID', 'Indonesia', 'Surabaya', 2024, 29000, 12, -7.2575, 112.7521),
+        ('Adidas', 'CN', 'China', 'Shanghai', 2023, 22000, 18, 31.2304, 121.4737),
+        ('Adidas', 'CN', 'China', 'Shanghai', 2024, 19000, 18, 31.2304, 121.4737),
+        ('Adidas', 'CN', 'China', 'Suzhou', 2023, 20000, 16, 31.2990, 120.5853),
+        ('Adidas', 'CN', 'China', 'Suzhou', 2024, 18000, 16, 31.2990, 120.5853),
+        ('Adidas', 'DE', 'Germany', 'Berlin', 2023, 5000, 35, 52.5200, 13.4050),
+        ('Adidas', 'DE', 'Germany', 'Berlin', 2024, 5200, 35, 52.5200, 13.4050),
+        ('Adidas', 'DE', 'Germany', 'Munich', 2023, 4500, 33, 48.1351, 11.5820),
+        ('Adidas', 'DE', 'Germany', 'Munich', 2024, 4700, 33, 48.1351, 11.5820)
+    ) AS base(brand, city_code, country, city, year, workers, cost_base, lat, lng),
+    generate_series(1, 15) AS seq;
+
+SELECT brand, COUNT(*) FROM factories GROUP BY brand;
+
+COPY factories TO '/tmp/nike_adidas_large.csv' DELIMITER ',' CSV HEADER;
+
+SELECT COUNT(*) FROM factories;
+
+UPDATE factories SET
+    latitude = latitude + (factory_id * 0.0001),
+    longitude = longitude + (factory_id * 0.0001);
+
+COPY factories TO '/tmp/nike_adidas_final.csv' DELIMITER ',' CSV HEADER;
+
+UPDATE factories SET
+    latitude = latitude + (factory_id * 0.005),
+    longitude = longitude + (factory_id * 0.005);
+
+COPY factories TO '/tmp/nike_adidas_final.csv' DELIMITER ',' CSV HEADER;
+
+UPDATE factories SET
+    latitude = latitude + (random() * 0.01 - 0.005),
+    longitude = longitude + (random() * 0.01 - 0.005);
+
+COPY factories TO '/tmp/nike_adidas_v4.csv' DELIMITER ',' CSV HEADER;
+
+DROP TABLE IF EXISTS factories;
+
+CREATE TABLE factories (
+    factory_id SERIAL PRIMARY KEY,
+    brand VARCHAR(20),
+    factory_code VARCHAR(20),
+    country VARCHAR(50),
+    city VARCHAR(50),
+    year INT,
+    workers INT,
+    monthly_output INT,
+    production_cost DECIMAL(10,2),
+    latitude FLOAT,
+    longitude FLOAT
+);
+
+INSERT INTO factories (brand, factory_code, country, city, year, workers, monthly_output, production_cost, latitude, longitude) VALUES
+('Nike', 'NK-VN-01', 'Vietnam', 'Ho Chi Minh', 2023, 35000, 2500000, 45.5, 10.8231, 106.6297),
+('Nike', 'NK-VN-02', 'Vietnam', 'Hanoi', 2023, 28000, 2200000, 41.2, 21.0285, 105.8542),
+('Nike', 'NK-VN-03', 'Vietnam', 'Da Nang', 2024, 29000, 2400000, 43.5, 16.0544, 108.2022),
+('Nike', 'NK-VN-04', 'Vietnam', 'Can Tho', 2024, 20000, 1800000, 38.0, 10.0452, 105.7469),
+('Nike', 'NK-VN-05', 'Vietnam', 'Hai Phong', 2023, 22000, 1900000, 39.0, 20.8449, 106.6881),
+('Adidas', 'AD-VN-01', 'Vietnam', 'Ho Chi Minh', 2023, 32000, 2300000, 44.0, 10.8231, 106.6297),
+('Adidas', 'AD-VN-02', 'Vietnam', 'Hanoi', 2024, 34000, 2550000, 46.8, 21.0285, 105.8542),
+('Adidas', 'AD-VN-03', 'Vietnam', 'Da Nang', 2023, 22000, 2000000, 40.0, 16.0544, 108.2022),
+('Adidas', 'AD-VN-04', 'Vietnam', 'Bien Hoa', 2024, 25000, 2100000, 41.0, 10.9500, 106.8200),
+('Adidas', 'AD-VN-05', 'Vietnam', 'Hai Phong', 2023, 21000, 1850000, 38.5, 20.8449, 106.6881),
+('Nike', 'NK-ID-01', 'Indonesia', 'Jakarta', 2023, 31000, 2400000, 41.0, -6.2088, 106.8456),
+('Nike', 'NK-ID-02', 'Indonesia', 'Surabaya', 2024, 33000, 2600000, 43.5, -7.2575, 112.7521),
+('Nike', 'NK-ID-03', 'Indonesia', 'Bandung', 2023, 24000, 2000000, 38.0, -6.9175, 107.6191),
+('Adidas', 'AD-ID-01', 'Indonesia', 'Jakarta', 2023, 33000, 2600000, 43.5, -6.2088, 106.8456),
+('Adidas', 'AD-ID-02', 'Indonesia', 'Surabaya', 2024, 35000, 2800000, 45.0, -7.2575, 112.7521),
+('Adidas', 'AD-ID-03', 'Indonesia', 'Medan', 2023, 20000, 1700000, 35.0, 3.5952, 98.6722),
+('Nike', 'NK-CN-01', 'China', 'Shanghai', 2023, 30000, 2200000, 52.0, 31.2304, 121.4737),
+('Nike', 'NK-CN-02', 'China', 'Guangzhou', 2024, 27000, 2000000, 49.5, 23.1291, 113.2644),
+('Nike', 'NK-CN-03', 'China', 'Suzhou', 2023, 23000, 1900000, 47.0, 31.2990, 120.5853),
+('Adidas', 'AD-CN-01', 'China', 'Shanghai', 2023, 22000, 1600000, 48.0, 31.2304, 121.4737),
+('Adidas', 'AD-CN-02', 'China', 'Guangzhou', 2024, 19000, 1400000, 45.0, 23.1291, 113.2644),
+('Adidas', 'AD-CN-03', 'China', 'Beijing', 2023, 18000, 1500000, 46.0, 39.9042, 116.4074),
+('Nike', 'NK-TH-01', 'Thailand', 'Bangkok', 2023, 18000, 1500000, 32.0
