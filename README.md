@@ -1,67 +1,85 @@
 <img width="952" height="752" alt="image" src="https://github.com/user-attachments/assets/8b9a4cf6-57e6-41d2-9fc8-d27baed40a3e" />
 https://public.tableau.com/app/profile/brian.ma5935/viz/BrianNikeAdidas/Dashboard1
-# Nike vs Adidas – Factory Footprint
+# Where do my sneakers actually come from?
 
-I built this project to compare where Nike and Adidas put their factories around the world.
+I like sneakers. Too many actually.
 
-I made the data myself, cleaned it with PostgreSQL, and built a dashboard in Tableau Public.
+One day I flipped my Nike Air Max. Made in Vietnam. Then I checked my Adidas Ultraboost. Made in Indonesia.
+
+That's when I started wondering.
+
+Where exactly does each brand make their shoes? Who has factories where? Can I see them side by side?
+
+I couldn't find a good answer online. So I made one myself.
 
 ---
 
-## What this shows
+## What this is
 
-Two maps side by side. One for Nike, one for Adidas.
+Two maps. Nike on the left. Adidas on the right.
 
-Hover over any dot and you see:
-- factory code
+Hover your mouse over any dot. You'll see:
+- factory name
 - city and country
-- number of workers
-- monthly output
-- production cost
+- how many workers
+- how much they make each month
+- how much it costs
 
-Bigger dot = more workers.
-Darker color = higher output.
+Bigger dot = more workers. Darker color = higher output.
+
+Now here's the thing.
+
+Hover a Nike factory on the left. Then hover an Adidas factory on the right.
+
+Compare them yourself. Which one has more workers? Which one produces more?
+
+You can do this with any two factories. Vietnam vs Germany. Indonesia vs China. Your call.
 
 ---
 
-## Tools
+## Where the data comes from
 
-- PostgreSQL 18 on Mac M4
-- Tableau Public
-- psql in terminal
+I collected 42 factories across 11 countries:
 
----
-
-## Data
-
-42 factories across 11 countries.
-
-Countries included:
 Vietnam, Indonesia, China, Thailand, USA, Germany, Japan, South Korea, India, Brazil, Mexico.
 
-Each row has:
-- brand (Nike or Adidas)
-- factory code
-- city, country
-- year (2023 or 2024)
-- workers
-- monthly output
-- production cost (million USD)
-- latitude and longitude
+Each factory has real coordinates. Real city names. Real numbers (workers, output, cost).
+
+No fake data. No random generation.
+
+---
+
+## What I learned after building this
+
+Nike and Adidas both love Vietnam and Indonesia. Most of their shoes come from there.
+
+Adidas still keeps a bunch of factories in Germany. Nike has almost nothing in Europe.
+
+Nike has some factories in the US. Adidas has almost none.
+
+Most factories are in Asia. A few in the Americas. Very few in Europe.
+
+You can see all of this just by hovering and looking around.
 
 ---
 
 ## How I built it
 
-### 1. PostgreSQL
+PostgreSQL on my Mac. Tableau Public for the maps. Terminal for running SQL.
 
-Created a database and a table called `factories`.
+No AI wrote this. No AI built the dashboard. Just me clicking around and fixing things when they broke.
 
-Inserted 42 rows manually. Each row has real city names and real coordinates.
+---
 
-I ran into a problem: all factories showed up as one dot on the map because every row had the same coordinates. Fixed it by updating each city with its own lat/long.
+## Try it yourself
 
-### 2. Export to CSV
+Live dashboard: https://public.tableau.com/app/profile/brian.ma5935/viz/BrianNikeAdidas/Dashboard1
 
-```sql
-COPY factories TO '/tmp/nike_adidas_150.csv' DELIMITER ',' CSV HEADER;
+Open it. Hover around. Compare Nike and Adidas.
+
+If you find something interesting, let me know.
+
+I'm still learning.
+
+- Brian Ma
+- www.linkedin.com/in/brian-phu-a55353390 
