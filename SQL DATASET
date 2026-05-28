@@ -1,3 +1,4 @@
+cat > /mnt/user-data/outputs/SQL_DATASET.sql << 'EOF'
 CREATE DATABASE nike_adidas_project;
 \c nike_adidas_project;
 
@@ -35,6 +36,229 @@ CREATE TABLE factories (
 WITH RECURSIVE numbers AS (
     SELECT generate_series(1, 200) AS n
 ),
+countries AS (
+    SELECT * FROM (VALUES
+        ('Vietnam',     40, 16.0,   108.0,  'Ho Chi Minh',   10.8231,  106.6297),
+        ('Vietnam',     40, 16.0,   108.0,  'Hanoi',         21.0285,  105.8542),
+        ('Vietnam',     40, 16.0,   108.0,  'Da Nang',       16.0544,  108.2022),
+        ('Indonesia',   25, -0.8,   113.9,  'Jakarta',       -6.2088,  106.8456),
+        ('Indonesia',   25, -0.8,   113.9,  'Surabaya',      -7.2575,  112.7521),
+        ('Indonesia',   25, -0.8,   113.9,  'Bandung',       -6.9175,  107.6191),
+        ('China',       15, 35.9,   104.2,  'Shanghai',      31.2304,  121.4737),
+        ('China',       15, 35.9,   104.2,  'Guangzhou',     23.1291,  113.2644),
+        ('China',       15, 35.9,   104.2,  'Suzhou',        31.2990,  120.5853),
+        ('Thailand',     8, 15.9,   101.0,  'Bangkok',       13.7367,  100.5231),
+        ('Thailand',     8, 15.9,   101.0,  'Chonburi',      13.3611,  100.9847),
+        ('USA',          5, 39.8,   -98.5,  'Portland',      45.5152, -122.6784),
+        ('USA',          5, 39.8,   -98.5,  'Memphis',       35.1495,  -90.0490),
+        ('Germany',      4, 51.2,    10.5,  'Berlin',        52.5200,   13.4050),
+        ('Germany',      4, 51.2,    10.5,  'Munich',        48.1351,   11.5820)
+    ) AS c(country_name, pct, lat, lng, city_name, city_lat, city_lng)
+),
+brands AS (
+    SELECT 'Nike' AS brand_name UNION SELECT 'Adidas'
+)
+INSERT INTO factories (brand, factory_code, country, city, year, workers, monthly_output, production_cost, latitude, longitude)
+SELECT
+    b.brand_name,
+    UPPER(CONCAT(LEFT(b.brand_name, 2), '-', LEFT(c.country_name, 2), '-', LPAD(n.n::TEXT, 3, '0'))),
+    c.country_name,
+    c.city_name,
+    2023 + (n.n % 2),
+    CASE
+        WHEN c.country_name = 'Vietnam'   THEN 25000 + (n.n % 15000)
+        WHEN c.country_name = 'Indonesia' THEN 22000 + (n.n % 14000)
+        WHEN c.country_name = 'China'     THEN 18000 + (n.n % 12000)
+        WHEN c.country_name = 'Thailand'  THEN 12000 + (n.n % 10000)
+        WHEN c.country_name = 'USA'       THEN  3000 + (n.n %  4000)
+        ELSE                                    2000 + (n.n %  5000)
+    END,
+    (CASE
+        WHEN c.country_name = 'Vietnam'   THEN 25000 + (n.n % 15000)
+        WHEN c.country_name = 'Indonesia' THEN 22000 + (n.n % 14000)
+        WHEN c.country_name = 'China'     THEN 18000 + (n.n % 12000)
+        WHEN c.country_name = 'Thailand'  THEN 12000 + (n.n % 10000)
+        WHEN c.country_name = 'USA'       THEN  3000 + (n.n %  4000)
+        ELSE                                    2000 + (n.n %  5000)
+    END) * (60 + (n.n % 31)),
+    ROUND(((CASE
+        WHEN c.country_name = 'Vietnam'   THEN 25000 + (n.n % 15000)
+        WHEN c.country_name = 'Indonesia' THEN 22000 + (n.n % 14000)
+        WHEN c.country_name = 'China'     THEN 18000 + (n.n % 12000)
+        WHEN c.country_name = 'Thailand'  THEN 12000 + (n.n % 10000)
+        WHEN c.country_name = 'USA'       THEN  3000 + (n.n %  4000)
+        ELSE                                    2000 + (n.n %  5000)
+    END) * (60 + (n.n % 31)) / 100000.0) +
+    CASE
+        WHEN c.country_name = 'Vietnam'   THEN 15 + (n.n % 10)
+        WHEN c.country_name = 'Indonesia' THEN 13 + (n.n % 10)
+        WHEN c.country_name = 'China'     THEN 20 + (n.n % 12)
+        WHEN c.country_name = 'Thailand'  THEN 12 + (n.n %  8)
+        WHEN c.country_name = 'USA'       THEN 35 + (n.n % 15)
+        ELSE                                   25 + (n.n % 15)
+    END, 1),
+    c.city_lat,
+    c.city_lng
+FROM numbers n
+CROSS JOIN brands b
+CROSS JOIN LATERAL (
+    SELECT * FROM countries
+    WHERE n.n % 100 <= pct OR pct = 40
+    LIMIT 1
+) c
+WHERE n.n <= 200;
+
+-- Problem: all factories in the same city share exact coordinates.
+-- Tableau collapses them into one dot. Scrapping this approach.
+
+DROP TABLE IF EXISTS factories;
+
+
+-- =============================================================
+-- STAGE 3 — Final clean insert: 42 factories across 11 countries
+-- Hardcoded VALUES gives full control over every row.
+-- Countries: Vietnam, Indonesia, China, Thailand, USA,
+--            Germany, Japan, South Korea, India, Brazil, Mexico
+-- =============================================================
+
+CREATE TABLE factories (
+    factory_id      SERIAL PRIMARY KEY,
+    brand           VARCHAR(20),
+    factory_code    VARCHAR(20),
+    country         VARCHAR(50),
+    city            VARCHAR(50),
+    year            INT,
+    workers         INT,
+    monthly_output  INT,
+    production_cost DECIMAL(10,2),
+    latitude        FLOAT,
+    longitude       FLOAT
+);
+
+INSERT INTO factories (brand, factory_code, country, city, year, workers, monthly_output, production_cost, latitude, longitude) VALUES
+-- Vietnam (10 factories — highest concentration for both brands)
+('Nike',   'NK-VN-01', 'Vietnam',     'Ho Chi Minh',   2023, 35000, 2500000, 45.50, 10.8231,  106.6297),
+('Nike',   'NK-VN-02', 'Vietnam',     'Hanoi',         2023, 28000, 2200000, 41.20, 21.0285,  105.8542),
+('Nike',   'NK-VN-03', 'Vietnam',     'Da Nang',       2024, 29000, 2400000, 43.50, 16.0544,  108.2022),
+('Nike',   'NK-VN-04', 'Vietnam',     'Can Tho',       2024, 20000, 1800000, 38.00, 10.0452,  105.7469),
+('Nike',   'NK-VN-05', 'Vietnam',     'Hai Phong',     2023, 22000, 1900000, 39.00, 20.8449,  106.6881),
+('Adidas', 'AD-VN-01', 'Vietnam',     'Ho Chi Minh',   2023, 32000, 2300000, 44.00, 10.8231,  106.6297),
+('Adidas', 'AD-VN-02', 'Vietnam',     'Hanoi',         2024, 34000, 2550000, 46.80, 21.0285,  105.8542),
+('Adidas', 'AD-VN-03', 'Vietnam',     'Da Nang',       2023, 22000, 2000000, 40.00, 16.0544,  108.2022),
+('Adidas', 'AD-VN-04', 'Vietnam',     'Bien Hoa',      2024, 25000, 2100000, 41.00, 10.9500,  106.8200),
+('Adidas', 'AD-VN-05', 'Vietnam',     'Hai Phong',     2023, 21000, 1850000, 38.50, 20.8449,  106.6881),
+-- Indonesia (6 factories)
+('Nike',   'NK-ID-01', 'Indonesia',   'Jakarta',       2023, 31000, 2400000, 41.00, -6.2088,  106.8456),
+('Nike',   'NK-ID-02', 'Indonesia',   'Surabaya',      2024, 33000, 2600000, 43.50, -7.2575,  112.7521),
+('Nike',   'NK-ID-03', 'Indonesia',   'Bandung',       2023, 24000, 2000000, 38.00, -6.9175,  107.6191),
+('Adidas', 'AD-ID-01', 'Indonesia',   'Jakarta',       2023, 33000, 2600000, 43.50, -6.2088,  106.8456),
+('Adidas', 'AD-ID-02', 'Indonesia',   'Surabaya',      2024, 35000, 2800000, 45.00, -7.2575,  112.7521),
+('Adidas', 'AD-ID-03', 'Indonesia',   'Medan',         2023, 20000, 1700000, 35.00,  3.5952,   98.6722),
+-- China (6 factories)
+('Nike',   'NK-CN-01', 'China',       'Shanghai',      2023, 30000, 2200000, 52.00, 31.2304,  121.4737),
+('Nike',   'NK-CN-02', 'China',       'Guangzhou',     2024, 27000, 2000000, 49.50, 23.1291,  113.2644),
+('Nike',   'NK-CN-03', 'China',       'Suzhou',        2023, 23000, 1900000, 47.00, 31.2990,  120.5853),
+('Adidas', 'AD-CN-01', 'China',       'Shanghai',      2023, 22000, 1600000, 48.00, 31.2304,  121.4737),
+('Adidas', 'AD-CN-02', 'China',       'Guangzhou',     2024, 19000, 1400000, 45.00, 23.1291,  113.2644),
+('Adidas', 'AD-CN-03', 'China',       'Beijing',       2023, 18000, 1500000, 46.00, 39.9042,  116.4074),
+-- Thailand (4 factories)
+('Nike',   'NK-TH-01', 'Thailand',    'Bangkok',       2023, 18000, 1500000, 32.00, 13.7367,  100.5231),
+('Nike',   'NK-TH-02', 'Thailand',    'Chonburi',      2024, 19000, 1600000, 33.50, 13.3611,  100.9847),
+('Adidas', 'AD-TH-01', 'Thailand',    'Bangkok',       2023, 17000, 1450000, 31.50, 13.7367,  100.5231),
+('Adidas', 'AD-TH-02', 'Thailand',    'Chonburi',      2024, 18000, 1550000, 32.50, 13.3611,  100.9847),
+-- USA (3 factories)
+('Nike',   'NK-US-01', 'USA',         'Portland',      2023,  5000,  500000, 55.00, 45.5152, -122.6784),
+('Nike',   'NK-US-02', 'USA',         'Memphis',       2024,  5200,  550000, 56.00, 35.1495,  -90.0490),
+('Adidas', 'AD-US-01', 'USA',         'Portland',      2023,  4800,  480000, 54.00, 45.5152, -122.6784),
+-- Germany (3 factories — Adidas only)
+('Adidas', 'AD-DE-01', 'Germany',     'Berlin',        2023,  5000,  500000, 55.00, 52.5200,   13.4050),
+('Adidas', 'AD-DE-02', 'Germany',     'Munich',        2024,  5200,  530000, 56.00, 48.1351,   11.5820),
+('Adidas', 'AD-DE-03', 'Germany',     'Herzogenaurach',2023,  4500,  470000, 53.00, 49.5667,   10.8833),
+-- Japan (2 factories)
+('Nike',   'NK-JP-01', 'Japan',       'Tokyo',         2023,  8000,  700000, 48.00, 35.6895,  139.6917),
+('Adidas', 'AD-JP-01', 'Japan',       'Osaka',         2024,  7500,  680000, 47.00, 34.6937,  135.5023),
+-- South Korea (2 factories)
+('Nike',   'NK-KR-01', 'South Korea', 'Seoul',         2023,  7000,  650000, 46.00, 37.5665,  126.9780),
+('Adidas', 'AD-KR-01', 'South Korea', 'Busan',         2024,  6800,  620000, 45.00, 35.1796,  129.0756),
+-- India (2 factories)
+('Nike',   'NK-IN-01', 'India',       'Mumbai',        2023, 12000,  900000, 35.00, 19.0760,   72.8777),
+('Adidas', 'AD-IN-01', 'India',       'Bangalore',     2024, 11000,  850000, 34.00, 12.9716,   77.5946),
+-- Brazil (2 factories)
+('Nike',   'NK-BR-01', 'Brazil',      'Sao Paulo',     2023, 10000,  800000, 42.00,-23.5505,  -46.6333),
+('Adidas', 'AD-BR-01', 'Brazil',      'Rio de Janeiro',2024,  9500,  780000, 41.00,-22.9068,  -43.1729),
+-- Mexico (2 factories)
+('Nike',   'NK-MX-01', 'Mexico',      'Mexico City',   2023, 15000, 1100000, 37.00, 19.4326,  -99.1332),
+('Adidas', 'AD-MX-01', 'Mexico',      'Guadalajara',   2024, 14000, 1050000, 36.00, 20.6597, -103.3496);
+
+SELECT COUNT(*) FROM factories;
+-- Expected: 42
+
+SELECT brand, COUNT(*) AS factory_count
+FROM factories
+GROUP BY brand;
+-- Expected: Nike 21, Adidas 21
+
+
+-- =============================================================
+-- STAGE 4 — Coordinate jitter so dots spread on the map
+-- First tried uniform offset by factory_id — dots lined up
+-- too neatly in a diagonal. Switched to random() for a more
+-- natural spread. setseed() makes it reproducible every re-run.
+-- cosine correction on longitude keeps east-west distances
+-- accurate at higher latitudes (matters for Germany at 52°N).
+-- =============================================================
+
+SELECT setseed(0.42);
+
+UPDATE factories SET
+    latitude  = latitude  + (random() * 0.09 - 0.045),
+    longitude = longitude + (random() * 0.09 - 0.045) / cos(radians(latitude));
+
+-- Verify coordinates look sensible, no factory in the ocean
+SELECT factory_code, city,
+       ROUND(latitude::numeric,  4) AS lat,
+       ROUND(longitude::numeric, 4) AS lng
+FROM factories
+ORDER BY city;
+
+COPY factories TO '/tmp/nike_adidas_150.csv' DELIMITER ',' CSV HEADER;
+
+
+-- =============================================================
+-- ANALYTICAL QUERIES — used to validate dashboard logic
+-- =============================================================
+
+-- Q1: Total output and average cost by country and brand
+SELECT country, brand,
+       SUM(monthly_output)                        AS total_output,
+       ROUND(AVG(production_cost)::numeric, 1)    AS avg_cost
+FROM factories
+GROUP BY country, brand
+ORDER BY total_output DESC;
+
+-- Q2: Output efficiency — which factories produce the most per worker?
+SELECT brand, city, workers, monthly_output,
+       ROUND(monthly_output::DECIMAL / workers, 1) AS output_per_worker
+FROM factories
+ORDER BY output_per_worker DESC;
+
+-- Q3: YoY workforce change per city (2023 vs 2024)
+SELECT brand, city,
+       MAX(CASE WHEN year = 2023 THEN workers END)                  AS workers_2023,
+       MAX(CASE WHEN year = 2024 THEN workers END)                  AS workers_2024,
+       MAX(CASE WHEN year = 2024 THEN workers END) -
+       MAX(CASE WHEN year = 2023 THEN workers END)                  AS yoy_delta
+FROM factories
+GROUP BY brand, city
+HAVING COUNT(DISTINCT year) = 2
+ORDER BY yoy_delta DESC;
+
+-- Q4: Cost efficiency — which brand spends less per million units?
+SELECT brand,
+       ROUND(SUM(production_cost) / SUM(monthly_output) * 1000000, 2) AS cost_per_million_units
+FROM factories
+GROUP BY brand;
+EOF),
 countries AS (
     SELECT * FROM (VALUES
         ('Vietnam',   40, 16.0,  108.0,  'Ho Chi Minh', 10.8231,  106.6297),
