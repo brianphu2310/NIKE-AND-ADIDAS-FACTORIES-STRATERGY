@@ -6,6 +6,9 @@
 
 > **Competitive manufacturing analysis** | PostgreSQL · Tableau | 42 factories · 11 countries · 2 years
 
+<img width="1426" height="840" alt="image" src="https://github.com/user-attachments/assets/b8a795bc-d291-4fcc-857c-13b3b7dc3d0c" />
+
+
 [![Tableau](https://img.shields.io/badge/Tableau-Live_Dashboard-purple?style=for-the-badge&logo=tableau&logoColor=white)](https://public.tableau.com/app/profile/brian.ma5935/viz/BrianNikeAdidas/Dashboard4)
 [![GitHub](https://img.shields.io/badge/GitHub-brianphu2310-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/brianphu2310)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Brian%20Phu-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/brian-phu-data-analysta55353390/)
