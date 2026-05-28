@@ -219,6 +219,6 @@ The dataset doesn't include compliance or certification data. Nike and Adidas bo
 ---
 
 Brian Ma (Phu)  
-linkedin.com/in/brian-phu-a55353390
+[LinkedIn](https://www.linkedin.com/in/brian-phu-data-analysta55353390/) · [GitHub](https://github.com/brianphu2310)
 
 *Self-initiated project. Factory data was constructed for analytical purposes based on publicly known information about Nike and Adidas manufacturing locations.*
