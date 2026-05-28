@@ -1,10 +1,11 @@
-<img width="2048" height="1207" alt="content" src="https://github.com/user-attachments/assets/b697eeaa-dee8-4beb-ae24-e24d2fe32df5" />
+
+<img width="1000" height="610" alt="image" src="https://github.com/user-attachments/assets/3a327ba2-f612-4fa4-8211-14e62f25358b" />
 
 
 # Nike vs Adidas — Global Supply Chain Analysis
 PostgreSQL + Tableau | Factory-level competitive intelligence across 11 countries
 
-![Dashboard](https://private-user-images.githubusercontent.com/243076453/599347968-b697eeaa-dee8-4beb-ae24-e24d2fe32df5.png)
+<img width="2048" height="1207" alt="content" src="https://github.com/user-attachments/assets/b697eeaa-dee8-4beb-ae24-e24d2fe32df5" />
 
 [![Tableau](https://img.shields.io/badge/Tableau-Dashboard-purple?style=for-the-badge&logo=tableau&logoColor=white)](https://public.tableau.com/app/profile/brian.ma5935/viz/BrianNikeAdidas/Dashboard4)
 [![GitHub](https://img.shields.io/badge/GitHub-brianphu2310-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/brianphu2310)
