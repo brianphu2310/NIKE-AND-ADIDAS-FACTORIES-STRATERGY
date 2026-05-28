@@ -114,15 +114,31 @@ VALUES
   -- ... full insert in SQL DATASET file
 ```
 
-### Coordinate fix
+### Spreading factories so the map doesn't collapse into single dots
 
-Early versions stacked all factories in a city on the exact same lat/lng. Tableau rendered that as one dot per city, hiding how many facilities were actually there. I applied a small offset per factory_id so dots spread out on the map without distorting the actual geography.
+The first version had all factories in a city stacked on the exact same lat/lng — Tableau rendered that as one dot per city, hiding how many facilities were actually there. A uniform offset by factory_id fixed the overlap but looked too neat, like factories were lined up in a diagonal row across the city.
+
+The better fix was controlled randomness — a small jitter within a realistic radius around the city centre, seeded so the result is reproducible every time the script runs.
 
 ```sql
+-- Seed the random number generator for reproducibility
+SELECT setseed(0.42);
+
+-- Apply random jitter within ~5km radius around each city centre
+-- 0.045 degrees latitude ≈ 5km; longitude scaled by cos(lat) to keep distances accurate
 UPDATE factories SET
-    latitude  = latitude  + (factory_id * 0.005),
-    longitude = longitude + (factory_id * 0.005);
+    latitude  = latitude  + (random() * 0.09 - 0.045),
+    longitude = longitude + (random() * 0.09 - 0.045) / cos(radians(latitude));
+
+-- Verify no factory ended up in the ocean
+SELECT factory_code, city,
+       ROUND(latitude::numeric, 4)  AS lat,
+       ROUND(longitude::numeric, 4) AS lng
+FROM factories
+ORDER BY city;
 ```
+
+`setseed(0.42)` means every re-run of the script produces the exact same coordinates — important for reproducibility if someone else clones the repo. The cosine correction on longitude keeps the east-west spread proportional at higher latitudes (matters for Germany at 52°N, less so for Indonesia near the equator).
 
 ### Analytical queries (used to validate the dashboard)
 
