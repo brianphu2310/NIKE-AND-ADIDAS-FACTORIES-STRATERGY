@@ -6,7 +6,9 @@ PostgreSQL + Tableau | Factory-level competitive intelligence across 11 countrie
 
 ![Dashboard](https://private-user-images.githubusercontent.com/243076453/599347968-b697eeaa-dee8-4beb-ae24-e24d2fe32df5.png)
 
-Live dashboard: https://public.tableau.com/app/profile/brian.ma5935/viz/BrianNikeAdidas/Dashboard1
+[![Tableau](https://img.shields.io/badge/Tableau-Dashboard-purple?style=for-the-badge&logo=tableau&logoColor=white)](https://public.tableau.com/app/profile/brian.ma5935/viz/BrianNikeAdidas/Dashboard4)
+[![GitHub](https://img.shields.io/badge/GitHub-brianphu2310-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/brianphu2310)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Brian%20Phu-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/brian-phu-data-analysta55353390/)
 
 ---
 
@@ -218,7 +220,6 @@ The dataset doesn't include compliance or certification data. Nike and Adidas bo
 
 ---
 
-Brian Ma (Phu)  
-[LinkedIn](https://www.linkedin.com/in/brian-phu-data-analysta55353390/) · [GitHub](https://github.com/brianphu2310)
+Brian Ma (Phu)
 
 *Self-initiated project. Factory data was constructed for analytical purposes based on publicly known information about Nike and Adidas manufacturing locations.*
